@@ -36,6 +36,21 @@ class Coconut(nn.Module):
         else:
             self.embedding = self.base_causallm.get_input_embeddings()
 
+    def should_insert_tokens(self, layer_index, hidden_state):
+        """Decides whether to insert special tokens at the given layer during inference based on a simple threshold.
+        In practice, this could be replaced by a learned gating mechanism."""
+        threshold = 0.5
+        # Convert hidden_state to float if necessary and compute mean
+        decision = torch.mean(hidden_state.float()).item() > threshold
+        return decision
+
+    def latent_token_insertion(self, hidden_state, token_id):
+        """Retrieves the token embedding for the given token_id and expands it to match the batch size for insertion."""
+        # Assumes that self.embedding is a torch.nn.Embedding instance
+        token_embedding = self.embedding.weight[token_id].unsqueeze(0).unsqueeze(0)  
+        token_embedding = token_embedding.expand(hidden_state.size(0), 1, -1)
+        return token_embedding
+
     def forward(self, input_ids, attention_mask, labels, position_ids, **kwargs):
 
         logits = []
